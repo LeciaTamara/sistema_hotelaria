@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Symfony\Component\HttpFoundation\Response;
 
 class RoomController extends Controller
 {
@@ -29,7 +30,7 @@ class RoomController extends Controller
             ]);
 
         if ($validador->fails()) {
-            return response()->json(['erros' => $validador->erros()], Response:HTTP_UNPROCESSABLE_ENTITY);
+            return response()->json(['erros' => $validador->erros()], Response: HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $quarto = Room::create($request->all());
@@ -73,7 +74,7 @@ class RoomController extends Controller
         if ($validador->fails()) {
             return response()->json([
                 'erros' => $validador->erros()
-            ], Response:HTTP_UNPROCESSABLE_ENTITY);
+            ], Response: HTTP_UNPROCESSABLE_ENTITY);
         }
 
         $quarto->update($request->all());
