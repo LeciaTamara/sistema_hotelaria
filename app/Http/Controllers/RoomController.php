@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Room;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -22,35 +23,79 @@ class RoomController extends Controller
         $validador = Validator::make($request->all(), [
             'hotel_id' => 'required|exists:hotels,id',
             'name' => 'required|string|max:150',
-        ],
+            ],
             [
                 'hotel_id.required' => 'O campo hotel_id é o obrigatório.',
                 'hotel_id.exists' => 'O hotel informado não existe no sistema.',
                 'name.require' => 'O nome do quarto é obrigatório.',
-            ]);
+            ]
+        );
 
         if ($validador->fails()) {
+            
+            // Log de erro
+            Log::erro('Falha ao validar as informações de quarto', ['erro' => $erro->getMessage()]);
+
             return response()->json(['erros' => $validador->erros()], Response: HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $quarto = Room::create($request->all());
+        try {
+            $quarto = Room::create($request->all());
 
-        return response()->json([
-            'mensagem' => 'Cadastro do quarto realizado com sucesso!',
-            'dados' => $quarto
-        ], Response::HTTP_CREATED);
+            // Salvar log
+            Log::info('Quarto cadastrado com sucesso', ['quarto' => $quarto]);
+
+            return response()->json([
+                'mensagem' => 'Cadastro do quarto realizado com sucesso!',
+                'dados' => $quarto
+                ], Response::HTTP_CREATED
+            );
+
+        } catch (\Exception $erro) {
+            // Log de erro
+            Log::error('Falha ao cadastrar o quarto', ['erro' => $validador->errors]);
+
+            return response()->json([
+                'mensagem' => 'Falha ao cadastrar o quarto',
+                'erro' => $erro->getMessage()
+                ], Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+        }
     }
 
     // Mostra os dados do quarto de acordo com o id informado
     public function show($id)
     {
-        $quarto = Room::with('hotel')->find($id);
-        if (!$quarto) {
+        try {
+
+            $quarto = Room::with('hotel')->find($id);
+
+            if (!$quarto) {
+                //Log de aviso
+                Log::warning('Falha ao buscar o quarto, verifique o id informado.', ['id_informado' => $id]);
+
+                return response()->json([
+                    'mensagem' => 'Quarto não encontrado, verifique o id informado.'
+                    ], Response::HTTP_NOT_FOUND
+                );
+            }
+
+            // Salvar log
+            Log::info('Quarto encontrado com sucesso', ['quarto' => $quarto]);
+
+            return response()->json($quarto, Response::HTTP_OK);
+            
+        } catch (\Exception $erro) {
+            //Log de erro
+            Log::error('Falha no sistema ao buscar o quarto', ['erro' => $erro->getMessage()]);
+
             return response()->json([
-                'mensagem' => 'Quarto não encontrado, verifique o id informado.'
-            ], Response::HTTP_NOT_FOUND);
+                'mensagem' => 'Falha no sistema ao o quarto',
+                'erro' => $erro->getMessage()
+                ], Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
-        return response()->json($quarto, Response::HTTP_OK);
+        
     }
 
     // Atualiza os dados do quarto de acordo com o id do quarto informado
@@ -58,6 +103,10 @@ class RoomController extends Controller
     {
         $quarto = Room::find($id);
         if (!$quarto) {
+
+            //Log de aviso
+            Log::warning('Falha ao atualizar o quarto, verifique o id informado.', ['id_informado' => $id]);
+
             return response()->json([
                 'mensagem' => 'Quarto não encontrado, verifique o id informado'
             ], Response::HTTP_NOT_FOUND);
@@ -66,21 +115,35 @@ class RoomController extends Controller
         $validador = Validator::make($request->all(), [
             'hotel_id' => 'sometimes|required|exists:hotels,id',
             'name' => 'sometimes|required|string|max:150',
-        ],
+            ],
             [
                 'hotel_id.exists' => 'O hotel informado não existe no sistema, verifique o id informado.',
-            ]);
+            ]
+        );
 
-        if ($validador->fails()) {
+        try {
+
+            $quarto->update($request->all());
+
+            // Salvar log
+            Log::info('Quarto {$id} atualiado com sucesso', ['quarto' => $quarto]);
+
             return response()->json([
-                'erros' => $validador->erros()
-            ], Response: HTTP_UNPROCESSABLE_ENTITY);
+                'mensagem' => 'Quarto atualizado com sucesso!', 'dados' => $quarto
+                ], Response::HTTP_OK
+            );
+            
+        } catch (\Exception $erro) {
+            //Log de erro
+            Log::error('Falha no sistema ao tentar atualizar o quarto', ['erro' => $erro->getMessage()]);
+
+            return response()->json([
+                'mensagem' => 'Falha no sistema ao atualizar o quarto',
+                'erro' => $erro->getMessage()
+                ], Response::HTTP_INTERNAL_SERVER_ERROR
+            );
         }
 
-        $quarto->update($request->all());
-        return response()->json([
-            'mensagem' => 'Quarto atualizado com sucesso!', 'dados' => $quarto
-        ], Response::HTTP_OK);
     }
 
     // Apagar o quarto de acordo com o id informado
@@ -89,15 +152,37 @@ class RoomController extends Controller
         $quarto = Room::find($id);
 
         if (!$quarto) {
+            //Log de aviso
+            Log::warning('Falha ao buscar o quarto, verifique o id informado.', ['id_informado' => $id]);
+
             return response()->json([
                 'mensagem' => 'Quarto não encontrado, verifique o id informado.'
-            ], Response::HTTP_NOT_FOUND);
+                ], Response::HTTP_NOT_FOUND
+            );
         }
 
-        $quarto->delete();
-        return response()->json([
-            'mensagem' => 'Quarto removido com sucesso!'
-        ], Response::HTTP_OK);
+        try {
+            //Guarda os dados do quarto que será excluído
+            $dadosExcluido = $quarto->toArray();
+
+            $quarto->delete();
+
+            Log::info('Quarto apagado com sucesso', ['dadosExcluido' => $dadosExcluido]);
+
+            return response()->json([
+                'mensagem' => 'Quarto removido com sucesso!'
+                ], Response::HTTP_OK
+            );
+        } catch (\Exception $erro) {
+            Log::error('Falha no sistema ao tentar apagar o quarto.', ['erro' => $erro->getMessage()]);
+
+            return response()->json([
+                'mensagem' => 'Falha no sistema ao tentar apagar o quarto.'
+                ], Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+        }
+
+        
     }
 }
 ?>

@@ -6,16 +6,15 @@ use App\Models\Reservation;
 use App\Models\Guest;
 use App\Models\Daily;
 use App\Models\Payment;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Log;
 
 class ReservationController extends Controller
 {
     //Mostra tosas as reservas
-    public function index()
-    {
+    public function index(){  
 
         return response()->json(Reservation::with(['hotel', 'room', 'guest', 'dailies', 'payments'])->get(), Response::HTTP_OK);
     }
@@ -54,12 +53,14 @@ class ReservationController extends Controller
             'dailies.required' => 'A listagem de diárias é obrigatória',
         ]);
 
-        if($validador->fails()){
-            return response()->json(['erros' => $validador->errors()
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        if ($validador->fails()) {
+            Log::error('Falha ao validar as informações do quarto', ['erros_encontrados' => $validador->errors()]);
+
+            return response()->json([
+                'erros' => $validador->errors()
+                ], Response::HTTP_UNPROCESSABLE_ENTITY
+            );
         }
-
-
         
         try {
             // Salva a reserva
@@ -90,14 +91,22 @@ class ReservationController extends Controller
                 }
             }
 
+            //Busca os dados trazendo todas as informações de reservas
+            $reservaCompleta = Reservation::with(['hotel', 'room', 'guest', 'dailies', 'payments'])->find($reserva->id);
+
+            //Salvar log
+            Log::info('Reservas cadastradas com sucesso', ['reservas' => $reservaCompleta]);
+
             return response()->json([
                 'mensagem' => 'Reserva criada com suscesso!',
                 'dados' => Reservation::with(['hotel', 'room', 'guest', 'dailies', 'payments'])->find($reserva->id)
             ], Response::HTTP_CREATED);
 
-            
         }
         catch(\Exception $erro){
+            //Log de erro
+            Log::error('Falha ao cadastrar a reserva', ['erro' => $erro->getMessage()]);
+
             return response()->json([
                 'mensagem' => 'Falha ao cadastrar a reserva',
                 'erro' => $erro->getMessage()
