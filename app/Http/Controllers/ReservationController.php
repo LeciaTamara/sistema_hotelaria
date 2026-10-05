@@ -33,6 +33,7 @@ class ReservationController extends Controller
             'guest.name' => 'required|string|max:100',
             'guest.last_name' => 'required|string|max:100',
             'guest.phone' => 'required|string|max:20',
+            'dailies' => 'required|array',
             'dailies.*.date' => 'required|date',
             'dailies.*.value' => 'required|numeric',
             'payments' => 'sometimes|array',
@@ -54,51 +55,47 @@ class ReservationController extends Controller
         ]);
 
         if($validador->fails()){
-            return response()->json([
-                'erros' => $validador->errors()
+            return response()->json(['erros' => $validador->errors()
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+
+        
         try {
-            //Inicia a transação para salvar a reserva no banco de dados,
-            //caso ocorra algum erro em um dos dados informados a tabela não
-            //é criada.
-            $reserva = DB::transaction(function () use ($request){
-                $reserva = Reservation::create($request->only([
-                    'hotel_id', 
-                    'room_id', 
-                    'check_in',
-                    'check_out',
-                    'total'
-                ]));
+            // Salva a reserva
+            $reserva = Reservation::create([
+                'hotel_id' => $request->input('hotel_id'),
+                'room_id' => $request->input('room_id'),
+                'check_in' => $request->input('check_in'),
+                'check_out' => $request->input('check_out'),
+                'total' => $request->input('total')
+            ]);
 
-                //Salva o hospéde que será vinculado a reserva criada
-                $dadosHospede = $request->input('guest');
-                $dadosHospede['reservation_id'] =  $reserva->id;
-                Guest::create($dadosHospede);
+            //Salva o hospede vinculado a reserva
+            $dadosHospede = $request->input('guest');
+            $dadosHospede['reservation_id'] = $reserva->id;
+            Guest::create($dadosHospede);
 
-                //Salva a lista de Diárias
-                foreach($request->input('dailies') as $diaria){
-                    $diaria['reservation_id'] = $reserva->id;
-                    Daily::create($diaria);
+            //Salva a lista de diárias do hospédes
+            foreach ($request->input('dailies') as $diaria){
+                $diaria['reservation_id'] = $reserva->id;
+                Daily::create($diaria);
+            }
+
+            //Salva a lista do método de pagamento utilizado pelo o hóspede
+            if($request->has('payments')){
+                foreach($request->input('payments') as $pagamento){
+                    $pagamento['reservation_id'] = $reserva->id;
+                    Payment::create($pagamento);
                 }
-
-                //Salva a lista de pagamentos
-                if ($request->has('payments')){
-                    foreach($request->input('payments') as $pagamento){
-                        $pagamento['reservation_id'] = $reserva->id;
-                        Payment::create($pagamento);
-                    }
-                }
-
-                return $reserva;
-
-            });
+            }
 
             return response()->json([
-                'mensagem' => 'Reserva criada com sucesso!',
+                'mensagem' => 'Reserva criada com suscesso!',
                 'dados' => Reservation::with(['hotel', 'room', 'guest', 'dailies', 'payments'])->find($reserva->id)
             ], Response::HTTP_CREATED);
+
+            
         }
         catch(\Exception $erro){
             return response()->json([
