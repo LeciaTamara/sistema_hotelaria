@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Log;
+use App\Services\ReservationService;
 
 class ReservationController extends Controller
 {
@@ -17,6 +18,19 @@ class ReservationController extends Controller
     public function index(){  
 
         return response()->json(Reservation::with(['hotel', 'room', 'guest', 'dailies', 'payments'])->get(), Response::HTTP_OK);
+    }
+
+
+    //Variável utilizada para guardar a classe ReservationService
+    protected $gerenciaReservas;
+
+    //O reservationSevice no parâmentro do construtur diz ao laravel para colocar a classe ReservationService dentro do controle
+    //e dar a essa classe o nome temporário de reservationservice;
+    public function __construct(ReservationService $reservationService){
+
+        //guarda a classe ReservationService injetada pelo o laravél($reservationService), e guarda dentro da variável de $gerenciaReservas
+        //a variável $calculoDeServico agora será chamada para invocar todas as funções do arquivo ReservationService
+        $this->gerenciaReservas = $reservationService;
     }
 
     //Cadastra uma nova reserva
@@ -28,6 +42,7 @@ class ReservationController extends Controller
             'check_in' => 'required|date',
             'check_out' => 'required|date|after_or_equal:check_in',
             'total' => 'required|numeric',
+            'cupom_desconto' => 'sometimes|string', //Campo reservado para informar o cupom de desconto
             'guest' => 'required|array',
             'guest.name' => 'required|string|max:100',
             'guest.last_name' => 'required|string|max:100',
@@ -63,13 +78,39 @@ class ReservationController extends Controller
         }
         
         try {
+
+            $roomId = $request->input('room_id');
+            $checkIn = $request->input('check_in');
+            $checkOut = $request->input('check_out');
+
+            $quartoDisponível = $this->gerenciaReservas->verificarDisponibilidadeQuarto($roomId, $checkIn, $checkOut);
+
+            if(!$quartoDisponível){
+                Log::warning("Reserva negada por falta de disponibilidade para o quarto com o id {$roomId}");
+                
+                return response()->json([
+                    'mensagem' => 'Desculpe, este quarto não está mais disponível para reservas neste período, o limite já foi atingido'
+                    ], Response::HTTP_CONFLICT
+                );
+            }
+
+            //Captura os dados de pagamento e o cumpom de desconto
+            $valorInicial = $request->input('total');
+            $cupom = $request->input('cupom_desconto');
+
+            //Captura a lista de pagamentos ou cria uma lista vazia caso o usuário não informe o pagamento
+            $pagamentosEnviados = $request->input('payments', []);
+
+            //Chamada da função para calcular os acréscimos do valor da reserva e o desconto quando aplicavél
+            $valorFinalDaReserva = $this->gerenciaReservas->calcularValorFinal($valorInicial, $cupom,  $pagamentosEnviados);
+
             // Salva a reserva
             $reserva = Reservation::create([
                 'hotel_id' => $request->input('hotel_id'),
                 'room_id' => $request->input('room_id'),
                 'check_in' => $request->input('check_in'),
                 'check_out' => $request->input('check_out'),
-                'total' => $request->input('total')
+                'total' => $valorFinalDaReserva['total']
             ]);
 
             //Salva o hospede vinculado a reserva
@@ -95,7 +136,7 @@ class ReservationController extends Controller
             $reservaCompleta = Reservation::with(['hotel', 'room', 'guest', 'dailies', 'payments'])->find($reserva->id);
 
             //Salvar log
-            Log::info('Reservas cadastradas com sucesso', ['reservas' => $reservaCompleta]);
+            Log::info('Reservas cadastradas com sucesso', ['reservas' => $reservaCompleta, 'dadosFinanceiros' => $valorFinalDaReserva]);
 
             return response()->json([
                 'mensagem' => 'Reserva criada com suscesso!',
