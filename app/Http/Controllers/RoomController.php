@@ -6,16 +6,56 @@ use App\Models\Room;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use OpenApi\Attributes as OA;
 use Symfony\Component\HttpFoundation\Response;
 
 class RoomController extends Controller
 {
+    // Rota que faz o mapeamento do Swagger para o get de quartos
+
+    #[OA\Get(
+        path: '/rooms',
+        summary: 'Listar todos os quartos',
+        description: 'Retorna uma lista completa de todos os quartos cadastrados no hotel.',
+        tags: ['Quartos'],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Lista de quartos retornada com sucesso.'
+            ),
+            new OA\Response(
+                response: 500,
+                description: 'Falha interna no servidor.'
+            )
+        ]
+    )]
     // Mostra todos os dados do hotel
     public function index()
     {
         return response()->json(Room::with('hotel')->get(), Response::HTTP_OK);
     }
 
+    // Rota que faz o mapeamento do Swagger para o Post de quartos
+
+    #[OA\Post(
+        path: '/rooms',
+        summary: 'Cadastrar um novo quarto',
+        description: 'Cria uma nova acomodacao associada a um hotel existente.',
+        tags: ['Quartos'],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['hotel_id', 'name'],
+                properties: [
+                    new OA\Property(property: 'hotel_id', type: 'integer', example: 1),
+                    new OA\Property(property: 'name', type: 'string', example: 'Suite Luxo Double')
+                ]
+            )
+        )
+    )]
+    #[OA\Response(response: 201, description: 'Quarto criado com sucesso.')]
+    #[OA\Response(response: 422, description: 'Erro de validacao nos campos enviados.')]
+    #[OA\Response(response: 500, description: 'Erro interno no servidor.')]
     // Cadastra um quarto dentro do hotel
     public function store(Request $request)
     {
@@ -58,6 +98,22 @@ class RoomController extends Controller
         }
     }
 
+    // Rota que faz o mapeamento do Swagger para o get de quartos de acordo com o Id
+
+    #[OA\Get(
+        path: '/rooms/{id}',
+        summary: 'Buscar quarto por ID',
+        description: 'Retorna as informacoes detalhadas de um quarto especifico informando seu ID.',
+        tags: ['Quartos'],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'ID unico do quarto', schema: new OA\Schema(type: 'integer'))
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Quarto localizado com sucesso.'),
+            new OA\Response(response: 404, description: 'Quarto nao encontrado no sistema.'),
+            new OA\Response(response: 500, description: 'Erro interno no servidor.')
+        ]
+    )]
     // Mostra os dados do quarto de acordo com o id informado
     public function show($id)
     {
@@ -88,6 +144,30 @@ class RoomController extends Controller
         }
     }
 
+    // Rota que faz o mapeamento do Swagger para o put de quartos
+
+    #[OA\Put(
+        path: '/rooms/{id}',
+        summary: 'Atualizar dados do quarto',
+        description: 'Atualiza o nome ou vinculo de hotel de uma acomodacao existente.',
+        tags: ['Quartos'],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'ID unico do quarto', schema: new OA\Schema(type: 'integer'))
+        ],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                properties: [
+                    new OA\Property(property: 'name', type: 'string', example: 'Suite Executiva Master')
+                ]
+            )
+        ),
+        responses: [
+            new OA\Response(response: 200, description: 'Quarto atualizado com sucesso.'),
+            new OA\Response(response: 404, description: 'Quarto nao encontrado.'),
+            new OA\Response(response: 500, description: 'Erro interno.')
+        ]
+    )]
     // Atualiza os dados do quarto de acordo com o id do quarto informado
     public function update(Request $request, $id)
     {
@@ -129,6 +209,22 @@ class RoomController extends Controller
         }
     }
 
+    // Rota que faz o mapeamento do Swagger para o delete de quartos
+
+    #[OA\Delete(
+        path: '/rooms/{id}',
+        summary: 'Excluir um quarto',
+        description: 'Remove permanentemente um quarto do estabelecimento a partir de seu ID.',
+        tags: ['Quartos'],
+        parameters: [
+            new OA\Parameter(name: 'id', in: 'path', required: true, description: 'ID unico do quarto', schema: new OA\Schema(type: 'integer'))
+        ],
+        responses: [
+            new OA\Response(response: 200, description: 'Quarto excluido com sucesso.'),
+            new OA\Response(response: 404, description: 'Quarto nao encontrado.'),
+            new OA\Response(response: 500, description: 'Erro interno.')
+        ]
+    )]
     // Apagar o quarto de acordo com o id informado
     public function destroy($id)
     {

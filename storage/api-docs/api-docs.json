@@ -1,0 +1,335 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "API de Gestão Hoteleira",
+        "description": "Documentação interativa das APIs de Hotéis, Quartos e Reservas do desafio técnico.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost/api",
+            "description": "Servidor Local de Desenvolvimento"
+        }
+    ],
+    "paths": {
+        "/reservations": {
+            "get": {
+                "tags": [
+                    "Reservas"
+                ],
+                "summary": "Listar todas as reservas",
+                "description": "Retorna uma lista completa de todas as reservas cadastradas com hóspedes, diárias e pagamentos.",
+                "operationId": "69fb15b9890a0559eb50e5e1777d9b64",
+                "responses": {
+                    "200": {
+                        "description": "Lista de reservas retornada com sucesso."
+                    },
+                    "500": {
+                        "description": "Erro interno no servidor."
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Reservas"
+                ],
+                "summary": "Criar uma nova reserva com regras aplicadas",
+                "description": "Processa a ocupacao maxima, calcula taxas progressivas por forma de pagamento e valida cupom de desconto em porcentagem.",
+                "operationId": "1aabc7d432cc652e63cfc3fb514132cd",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "hotel_id",
+                                    "room_id",
+                                    "check_in",
+                                    "check_out",
+                                    "total",
+                                    "guest",
+                                    "dailies"
+                                ],
+                                "properties": {
+                                    "hotel_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "room_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "check_in": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-10-10"
+                                    },
+                                    "check_out": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "example": "2026-10-15"
+                                    },
+                                    "total": {
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 1000
+                                    },
+                                    "cupom_desconto": {
+                                        "type": "string",
+                                        "example": "FOCO10"
+                                    },
+                                    "guest": {
+                                        "properties": {
+                                            "name": {
+                                                "type": "string",
+                                                "example": "Adriana"
+                                            },
+                                            "last_name": {
+                                                "type": "string",
+                                                "example": "Brandão"
+                                            },
+                                            "phone": {
+                                                "type": "string",
+                                                "example": "123456789"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "dailies": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "date": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "example": "2026-10-10"
+                                                },
+                                                "value": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 200
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "payments": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "method": {
+                                                    "type": "string",
+                                                    "example": "Cartão de Crédito"
+                                                },
+                                                "value": {
+                                                    "type": "number",
+                                                    "format": "float",
+                                                    "example": 400
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Reserva efetuada com sucesso aplicando as regras financeiras."
+                    },
+                    "409": {
+                        "description": "Conflito: Quarto ja atingiu o limite maximo de 10 reservas concorrentes."
+                    },
+                    "422": {
+                        "description": "Erros de validacao de campos."
+                    },
+                    "500": {
+                        "description": "Erro interno no servidor."
+                    }
+                }
+            }
+        },
+        "/rooms": {
+            "get": {
+                "tags": [
+                    "Quartos"
+                ],
+                "summary": "Listar todos os quartos",
+                "description": "Retorna uma lista completa de todos os quartos cadastrados no hotel.",
+                "operationId": "fc04f85434400dbf0e26d2ec77a5878d",
+                "responses": {
+                    "200": {
+                        "description": "Lista de quartos retornada com sucesso."
+                    },
+                    "500": {
+                        "description": "Falha interna no servidor."
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Quartos"
+                ],
+                "summary": "Cadastrar um novo quarto",
+                "description": "Cria uma nova acomodacao associada a um hotel existente.",
+                "operationId": "afb43684c849533c65e931df636b4de6",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "hotel_id",
+                                    "name"
+                                ],
+                                "properties": {
+                                    "hotel_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Suite Luxo Double"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Quarto criado com sucesso."
+                    },
+                    "422": {
+                        "description": "Erro de validacao nos campos enviados."
+                    },
+                    "500": {
+                        "description": "Erro interno no servidor."
+                    }
+                }
+            }
+        },
+        "/rooms/{id}": {
+            "get": {
+                "tags": [
+                    "Quartos"
+                ],
+                "summary": "Buscar quarto por ID",
+                "description": "Retorna as informacoes detalhadas de um quarto especifico informando seu ID.",
+                "operationId": "1c71dfd30793f918f07dc95b23daefc6",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID unico do quarto",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Quarto localizado com sucesso."
+                    },
+                    "404": {
+                        "description": "Quarto nao encontrado no sistema."
+                    },
+                    "500": {
+                        "description": "Erro interno no servidor."
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Quartos"
+                ],
+                "summary": "Atualizar dados do quarto",
+                "description": "Atualiza o nome ou vinculo de hotel de uma acomodacao existente.",
+                "operationId": "ea75b11760a871bba18cf5f9e43a5b70",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID unico do quarto",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "example": "Suite Executiva Master"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Quarto atualizado com sucesso."
+                    },
+                    "404": {
+                        "description": "Quarto nao encontrado."
+                    },
+                    "500": {
+                        "description": "Erro interno."
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Quartos"
+                ],
+                "summary": "Excluir um quarto",
+                "description": "Remove permanentemente um quarto do estabelecimento a partir de seu ID.",
+                "operationId": "cf9104dbefd91a81bebb07cafe7e70cf",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID unico do quarto",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Quarto excluido com sucesso."
+                    },
+                    "404": {
+                        "description": "Quarto nao encontrado."
+                    },
+                    "500": {
+                        "description": "Erro interno."
+                    }
+                }
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Reservas",
+            "description": "Reservas"
+        },
+        {
+            "name": "Quartos",
+            "description": "Quartos"
+        }
+    ]
+}
